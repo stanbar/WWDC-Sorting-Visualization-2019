@@ -3,21 +3,57 @@
 import PlaygroundSupport
 import SpriteKit
 
+struct Block : Comparable, Hashable {
+    static func < (left: Block, right: Block) -> Bool {
+        return left.area < right.area
+    }
+    
+    var node : SKShapeNode
+    var area : CGFloat{
+        return node.frame.width * node.frame.height
+    }
+    var left : CGFloat{
+        return node.frame.minX
+    }
+    var right : CGFloat{
+        return node.frame.maxX
+    }
+    var x : CGFloat {
+        return node.position.x
+    }
+}
+
+
+
 class GameScene: SKScene {
     
-    private var spinnyNode : SKShapeNode!
-    private var areaNode : SKLabelNode!
-    
+    private var blockSize : CGSize!
+    private var blocks : [Block] = []
+    private var blockAdding = false
     override func didMove(to view: SKView) {
         physicsWorld.gravity = CGVector.zero
         backgroundColor = SKColor.white
-        
-        // Create shape node to use during mouse interaction
         let w = (size.width + size.height) * 0.05
+        blockSize = CGSize(width: w, height: w)
+        let logo = SKSpriteNode(imageNamed: "LogoBlackWWDC19")
+        logo.name = "logo"
+        logo.setScale(1.0)
+        logo.position = CGPoint(x: frame.midX, y: frame.midY)
+        addChild(logo)
+    }
+    
+    func newBlock(at pos : CGPoint, _ color : NSColor) -> Block{
+        let node = SKShapeNode(rectOf: blockSize)
+        node.position = pos
+        node.strokeColor = color
+        node.fillColor = color
+        node.run(
+            .repeatForever(
+                .sequence([.scale(by: 0.5, duration: 1),
+                           .scale(by: 2.0, duration: 1)])))
         
-        spinnyNode = SKShapeNode(rectOf: CGSize(width: w, height: w))
-        spinnyNode.lineWidth = 2.5
-        
+        let block = Block(node: node)
+        return block
     }
     
     @objc static override var supportsSecureCoding: Bool {
@@ -28,178 +64,83 @@ class GameScene: SKScene {
         }
     }
     
-    var newBlock : SKShapeNode?
     
-    func touchDown(atPoint pos : CGPoint) {
-        let newBlock = startNewBlockCreation(atPoint : pos)
-        addChild(newBlock)
-    }
-    
-    func startNewBlockCreation(atPoint pos : CGPoint) -> SKShapeNode{
-        let newBlock = spinnyNode.copy() as! SKShapeNode
-        newBlock.position = pos
-        newBlock.strokeColor = SKColor(red: CGFloat.random(in: 0.3...1.0),
-                                       green: CGFloat.random(in: 0.3...1.0),
-                                       blue: CGFloat.random(in: 0.3...1.0),
-                                       alpha: CGFloat.random(in: 0.9...1.0))
-        newBlock.fillColor = newBlock.strokeColor
-        newBlock.run(
-            .repeatForever(
-            .sequence([.scale(by: 0.5, duration: 1),
-                       .scale(by: 2.0, duration: 1)])))
-        
-        self.newBlock = newBlock
-        return newBlock
-    }
-    
-    func touchMoved(toPoint pos : CGPoint) {
-        moveNewBlockCreation(atPoint : pos)
-        
-    }
-    
-    func moveNewBlockCreation(atPoint pos : CGPoint){
-        guard let newBlock = self.newBlock as SKShapeNode? else { return }
-        newBlock.position = pos
-    }
-    
-    func touchUp(atPoint pos : CGPoint) {
-        endNewBlockCreation(atPoint : pos)
-        
-    }
-    
-    func endNewBlockCreation(atPoint pos : CGPoint){
-        guard let newBlock = self.newBlock as SKShapeNode? else { return }
-        newBlock.removeAllActions()
-        newBlock.position = pos
-        makeSpace(for: newBlock)
-        newBlock.run(SKAction.moveTo(y: newBlock.frame.height/2, duration: 0.5))
-        self.newBlock = nil
-    }
-    
-    func left(_ node : SKNode) -> CGFloat{
-        return node.frame.minX
-    }
-    func right(_ node : SKNode) -> CGFloat{
-        return node.frame.maxX
-    }
-    
-    var counter : Int = 0
-    func makeSpace(for newBlock : SKShapeNode){
-        // find matching
-        var moveLeft : CGFloat = 0.0
-        var moveRight : CGFloat = 0.0
-        for child in children{
-            if(child == newBlock){continue}
-            var willCollide = false
-            print("Checking [\(left(child)) \(right(child))]")
-            if left(newBlock) == right(child) && //   [new]
-                left(newBlock) == right(child){ //    [old]
-                willCollide = true
-                print("Collistion detected")
-                print("[new]")
-                print("[old]")
-            }
-            if left(newBlock) >= left(child) &&
-                left(newBlock) <= right(child) &&
-                right(newBlock) >= right(child){
-                willCollide = true
-                print("Collision detected")
-                print("   [new]")
-                print("[old]")
-            }
-            if left(newBlock) <= left(child) && //  [new]
-                right(newBlock) >= left(child) && //     <>
-                right(newBlock) <= right(child){ //     [old]
-                willCollide = true
-                print("Collision detected")
-                print("[new]")
-                print("   [old]")
-            }
-            if left(newBlock) >= left(child) && //  [new]
-                right(newBlock) <= right(child) { // [ old ]
-                willCollide = true
-                print("Collision detected")
-                print("  [new]")
-                print("[  old  ]")
-            }
-            
-            if left(newBlock) <= left(child) && //  [ new ]
-                right(newBlock) >= right(child){ //     [old]
-                willCollide = true
-                print("Collision detected")
-                print("[  new  ]")
-                print("  [old]")
-            }
-            if !willCollide {continue}
-            counter = counter + 1
-                
-            print("\(counter)will collide")
-            if newBlock.position.x >= child.position.x && newBlock.frame.minX < child.frame.maxX{
-                //    [new]
-                //    <>
-                // [old]
-                moveLeft = child.frame.maxX - newBlock.frame.minX
-            }else if newBlock.position.x < child.position.x && newBlock.frame.maxX > child.frame.minX{
-                //  [new]
-                //    <>
-                //   [old]
-                moveRight = newBlock.frame.maxX - child.frame.minX
-            }
-        }
-            
-        for child in children{
-            if(child == newBlock){continue}
-            let garbageCollection = SKAction.run {
-                print("Check if remove child.frame.maxX: \(child.frame.maxX)",
-                    "child.frame.minX: \(child.frame.minX)",
-                    "self.size.width: \(self.size.width)"
-                )
-                
-                if child.frame.maxX < 0.0
-                    || child.frame.minX > self.size.width {
-                    child.removeFromParent()
-                }
-            }
-
-            if child.position.x > newBlock.position.x{
-                child.run(SKAction.sequence([
-                    .moveBy(x: moveRight, y: 0.0, duration: 0.5),
-                    garbageCollection]))
-            }else{
-               child.run(SKAction.sequence([
-                .moveBy(x: -moveLeft, y: 0.0, duration: 0.5),
-                garbageCollection]))
-            }
-            
-        }
-    }
     
     func sort(){
-        if children.count < 2 { return }
-        for _ in 0...children.count {
-            for value in 1...children.count - 1 {
-                if area(children[value-1]) > area(children[value]) {
-                    replace(children[value-1], children[value])
+        bubblesort()
+    }
+    
+    func quicksort<T: Comparable>(_ a: [T]) -> [T] {
+        guard a.count > 1 else { return a }
+        let pivot = a[a.count/2]
+        let less = a.filter { $0 < pivot }
+        let equal = a.filter { $0 == pivot }
+        let greater = a.filter { $0 > pivot }
+        
+        return quicksort(less) + equal + quicksort(greater)
+    }
+    let animationDuration = 0.3
+    func bubblesort(){
+        var actions : [(Block?, SKAction)] = []
+        var positions : [Block?: CGFloat] = [:]
+        for block in blocks{
+            positions[block] = block.x
+        }
+        
+        for i in 0..<blocks.count {
+            for j in 1..<blocks.count - i {
+                if blocks[j] < blocks[j-1] {
+                    let tmp = blocks[j-1]
+                    blocks[j-1] = blocks[j]
+                    blocks[j] = tmp
+                    
+                    let tempPosition = positions[blocks[j-1]]
+                    positions[blocks[j-1]] = positions[blocks[j]]
+                    positions[blocks[j]] = tempPosition
+                    
+                    actions.append((blocks[j-1], SKAction.moveTo(x: positions[blocks[j-1]]!, duration: animationDuration)))
+                    actions.append((blocks[j], SKAction.moveTo(x: positions[blocks[j]]!, duration: animationDuration)))
+                    
                 }
             }
         }
+        // Unset semaphore after all actions are executed
+        actions.append((blocks.first, SKAction.run{ self.blockAdding = false }))
+    
+        var duration = 0.0
+        var replacedBothOfPair = false
+        for (block, action) in actions{
+            block?.node.run(SKAction.sequence([.wait(forDuration: duration), action]))
+            // Execute both actions at once
+            if replacedBothOfPair{
+                duration += animationDuration
+            }
+            replacedBothOfPair = !replacedBothOfPair
+        }
+        
     }
-    func area(_ node : SKNode) -> CGFloat{
+    
+    func area(of node : SKNode) -> CGFloat{
         return node.frame.width * node.frame.height
     }
     
-    func replace(_ first : SKNode, _ second : SKNode){
+    func replace(_ first : Block, _ second : Block) -> (SKAction, SKAction){
         let firstReplace = SKAction.sequence([
             .wait(forDuration: 0.5),
-            .move(to: second.position, duration: 0.5)])
+            .moveTo(x: second.x, duration: 0.5)
+            ])
         
         let secondReplace = SKAction.sequence([
             .wait(forDuration: 0.5),
-            .move(to: first.position, duration: 0.5)])
-        second.run(secondReplace)
-        first.run(firstReplace)
+            .moveTo(x: first.x, duration: 0.5)
+            ])
+        
+        return (firstReplace, secondReplace)
         
     }
+    
+    
+    
     
     override func mouseDown(with event: NSEvent) {
         touchDown(atPoint: event.location(in: self))
@@ -215,6 +156,148 @@ class GameScene: SKScene {
     
     override func update(_ currentTime: TimeInterval) {
         // Called before each frame is rendered
+    }
+    
+    var creatingBlock : Block?
+    
+    func touchDown(atPoint pos : CGPoint) {
+        if blockAdding {
+            print("Can not add new block right now")
+            return
+        }
+        blockAdding = true
+        let creatingBlock = startNewBlockCreation(atPoint : pos)
+        self.creatingBlock = creatingBlock
+        addChild(creatingBlock.node)
+    }
+    
+    func startNewBlockCreation(atPoint pos : CGPoint) -> Block{
+        let creatingBlock = newBlock(at : pos,
+                                    SKColor(red: CGFloat.random(in: 0.3...1.0),
+                                            green: CGFloat.random(in: 0.3...1.0),
+                                            blue: CGFloat.random(in: 0.3...1.0),
+                                            alpha: CGFloat.random(in: 0.9...1.0)))
+        creatingBlock.node.run(
+            .repeatForever(
+            .sequence([.scale(by: 0.5, duration: 1),
+                       .scale(by: 2.0, duration: 1)])))
+        
+        return creatingBlock
+    }
+    
+    func touchMoved(toPoint pos : CGPoint) {
+        moveNewBlockCreation(atPoint : pos)
+        
+    }
+    
+    func moveNewBlockCreation(atPoint pos : CGPoint){
+        guard let creatingBlock = self.creatingBlock as Block? else { return }
+        creatingBlock.node.position = pos
+    }
+    
+    func touchUp(atPoint pos : CGPoint) {
+        endNewBlockCreation(atPoint : pos)
+        
+    }
+    
+    func endNewBlockCreation(atPoint pos : CGPoint){
+        guard let creatingBlock = self.creatingBlock as Block? else { return }
+        creatingBlock.node.removeAllActions()
+        creatingBlock.node.position = pos
+        let insertIndex = findInsertIndex(for: pos)
+        print("indert new block in at index\(insertIndex)")
+        blocks.insert(creatingBlock, at: insertIndex)
+        makeSpace(for: creatingBlock)
+        creatingBlock.node.run(SKAction.sequence([
+            .moveTo(y: creatingBlock.node.frame.height/2, duration: 0.5),
+            .run { self.sort()}
+            ]))
+        self.creatingBlock = nil
+        
+    }
+    
+    func findInsertIndex(for position: CGPoint) -> Int {
+        if blocks.count == 0 {return 0}
+        var indexToInsert = 0
+        for block in blocks{
+            if block.x <= position.x{ indexToInsert = indexToInsert + 1 }
+        }
+        return indexToInsert
+    }
+    
+    func makeSpace(for newBlock : Block){
+        // find matching
+        var moveLeft : CGFloat = 0.0
+        var moveRight : CGFloat = 0.0
+        for block in blocks{
+            if(block == newBlock){continue}
+            var willCollide = false
+            if newBlock.left == block.right && //   [new]
+                newBlock.left == block.right{ //    [old]
+                willCollide = true
+                print("Collistion detected")
+                print("[new]")
+                print("[old]")
+            }
+            if newBlock.left >= block.left &&
+                newBlock.left <= block.right &&
+                newBlock.right >= block.right{
+                willCollide = true
+                print("Collision detected")
+                print("   [new]")
+                print("[old]")
+            }
+            if newBlock.left <= block.left && //  [new]
+                newBlock.right >= block.left && //     <>
+                newBlock.right <= block.right{ //     [old]
+                willCollide = true
+                print("Collision detected")
+                print("[new]")
+                print("   [old]")
+            }
+            if newBlock.left >= block.left && //  [new]
+                newBlock.right <= block.right { // [ old ]
+                willCollide = true
+                print("Collision detected")
+                print("  [new]")
+                print("[  old  ]")
+            }
+            
+            if newBlock.left <= block.left && //  [ new ]
+                newBlock.right >= block.right{ //     [old]
+                willCollide = true
+                print("Collision detected")
+                print("[  new  ]")
+                print("  [old]")
+            }
+            if !willCollide {continue}
+            if newBlock.x >= block.x && newBlock.left < block.right{
+                moveLeft = block.right - newBlock.left
+            }else if newBlock.x < block.x && newBlock.right > block.left{
+                moveRight = newBlock.right - block.left
+            }
+        }
+        
+        
+        for block in self.blocks{
+            if(block == newBlock){continue}
+            let garbageCollection = SKAction.run {
+                if block.right < 0.0 || block.left > self.size.width {
+                    block.node.removeFromParent()
+                    self.blocks.remove(at : self.blocks.firstIndex(of: block)!)
+                }
+            }
+
+            if block.x > newBlock.x{
+                block.node.run(SKAction.sequence([
+                    .moveBy(x: moveRight, y: 0.0, duration: 0.5),
+                    garbageCollection]))
+            }else{
+               block.node.run(SKAction.sequence([
+                    .moveBy(x: -moveLeft, y: 0.0, duration: 0.5),
+                    garbageCollection]))
+            }
+        }
     }
 }
 

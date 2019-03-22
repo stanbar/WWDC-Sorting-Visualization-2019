@@ -21,8 +21,10 @@ struct Block : Comparable, Hashable {
     var x : CGFloat {
         return node.position.x
     }
+    var width : CGFloat {
+        return node.frame.width
+    }
 }
-
 
 
 class GameScene: SKScene {
@@ -30,6 +32,7 @@ class GameScene: SKScene {
     private var blockSize : CGSize!
     private var blocks : [Block] = []
     private var blockAdding = false
+    
     override func didMove(to view: SKView) {
         physicsWorld.gravity = CGVector.zero
         backgroundColor = SKColor.white
@@ -131,12 +134,11 @@ class GameScene: SKScene {
                     let tmp = blocks[j-1]
                     blocks[j-1] = blocks[j]
                     blocks[j] = tmp
-                    
-                    let tempPosition = positions[blocks[j-1]]
-                    positions[blocks[j-1]] = positions[blocks[j]]
-                    positions[blocks[j]] = tempPosition
-                    
-                    
+                    let leftBlockMax = positions[blocks[j]]! + blocks[j].width/2
+                    let rightBlockMin = positions[blocks[j-1]]! - blocks[j-1].width/2
+                    let distance = rightBlockMin - leftBlockMax
+                    positions[blocks[j]] = positions[blocks[j]]! + blocks[j-1].width + distance
+                    positions[blocks[j-1]] = positions[blocks[j-1]]! - blocks[j].width - distance
                     
                     
                     actions.append((ActionType.ANIMATION, blocks[j-1], SKAction.moveTo(x: positions[blocks[j-1]]!, duration: animationDuration)))
@@ -254,13 +256,6 @@ class GameScene: SKScene {
         for block in blocks{
             if(block == newBlock){continue}
             var willCollide = false
-            if newBlock.left == block.right &&
-                newBlock.left == block.right{
-                willCollide = true
-                print("Collistion detected")
-                print("[new]")
-                print("[old]")
-            }
             if newBlock.left >= block.left &&
                 newBlock.left <= block.right &&
                 newBlock.right >= block.right{
@@ -300,25 +295,33 @@ class GameScene: SKScene {
             }
         }
         
-        
-        for (index, block) in self.blocks.enumerated(){
-            if(block == newBlock){continue}
+        //iterate to left of me
+        for i in 0..<insertIndex{
+            let block = self.blocks[i]
             let garbageCollection = SKAction.run {
                 if block.right < 0.0 || block.left > self.size.width {
                     block.node.removeFromParent()
                     self.blocks.remove(at : self.blocks.firstIndex(of: block)!)
                 }
             }
-
-            if block.x > newBlock.x{
-                block.node.run(SKAction.sequence([
-                    .moveBy(x: moveRight, y: 0.0, duration: 0.5),
-                    garbageCollection]))
-            }else{
-               block.node.run(SKAction.sequence([
-                    .moveBy(x: -moveLeft, y: 0.0, duration: 0.5),
-                    garbageCollection]))
+            block.node.run(SKAction.sequence([
+                .moveBy(x: -moveLeft, y: 0.0, duration: 0.5),
+                garbageCollection]))
+        }
+        
+        //iterate to right of me
+        for i in insertIndex+1..<blocks.count{
+            let block = self.blocks[i]
+            let garbageCollection = SKAction.run {
+                if block.right < 0.0 || block.left > self.size.width {
+                    block.node.removeFromParent()
+                    self.blocks.remove(at : self.blocks.firstIndex(of: block)!)
+                }
             }
+            
+            block.node.run(SKAction.sequence([
+                .moveBy(x: moveRight, y: 0.0, duration: 0.5),
+                garbageCollection]))
         }
     }
 }
@@ -328,7 +331,6 @@ extension GameScene: ResetButtonNodeDelegate {
     
     func didTapReset(sender: ResetButtonNode) {
         // Remove all person nodes
-        
         enumerateChildNodes(withName: "block") { (node, stop) in
             let fadeOutAction = SKAction.fadeOut(withDuration: 0.25)
             fadeOutAction.timingMode = .easeInEaseOut

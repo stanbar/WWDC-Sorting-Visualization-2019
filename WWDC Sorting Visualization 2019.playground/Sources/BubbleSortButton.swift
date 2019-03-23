@@ -1,16 +1,16 @@
 import Foundation
 import SpriteKit
 
-public class ResetButtonNode: SKSpriteNode {
+public class BubbleSortButtonNode: SKSpriteNode {
     
     // MARK: Properties
     
-    public weak var delegate: ResetButtonNodeDelegate?
+    public weak var delegate: BubbleSortButtonNodeDelegate?
     
     // MARK: Lifecycle
     
     public init() {
-        let texture = SKTexture(imageNamed: "restart")
+        let texture = SKTexture(imageNamed: "bubble-sort")
         let color = SKColor.red
         let size = CGSize(width: 40, height: 40)
         super.init(texture: texture, color: color, size: size)
@@ -46,7 +46,7 @@ public class ResetButtonNode: SKSpriteNode {
         let location = event.location(in: self)
         if location.isInside(node: self) {
             // Touch Up Inside
-            delegate?.didTapReset(sender: self)
+            delegate?.didTapSortType(sender: self)
         }
     }
     
@@ -66,6 +66,6 @@ public class ResetButtonNode: SKSpriteNode {
 
 // MARK: ResetButtonNodeDelegate
 
-public protocol ResetButtonNodeDelegate: class {
-    func didTapReset(sender: ResetButtonNode)
+public protocol BubbleSortButtonNodeDelegate: class {
+    func didTapSortType(sender: BubbleSortButtonNode)
 }

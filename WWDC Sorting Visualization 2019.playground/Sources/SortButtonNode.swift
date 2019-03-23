@@ -1,16 +1,16 @@
 import Foundation
 import SpriteKit
 
-public class ResetButtonNode: SKSpriteNode {
+public class SortButtonNode: SKSpriteNode {
     
     // MARK: Properties
     
-    public weak var delegate: ResetButtonNodeDelegate?
+    public weak var delegate: SortButtonNodeDelegate?
     
     // MARK: Lifecycle
     
     public init() {
-        let texture = SKTexture(imageNamed: "restart")
+        let texture = SKTexture(imageNamed: "sort-variant")
         let color = SKColor.red
         let size = CGSize(width: 40, height: 40)
         super.init(texture: texture, color: color, size: size)
@@ -46,7 +46,7 @@ public class ResetButtonNode: SKSpriteNode {
         let location = event.location(in: self)
         if location.isInside(node: self) {
             // Touch Up Inside
-            delegate?.didTapReset(sender: self)
+            delegate?.didTapSort(sender: self)
         }
     }
     
@@ -64,8 +64,18 @@ public class ResetButtonNode: SKSpriteNode {
     
 }
 
+// MARK: CGPoint Extension for Hit Testing
+
+public extension CGPoint {
+    
+    func isInside(node: SKSpriteNode) -> Bool {
+        if self.x > -node.size.width/2, self.x < node.size.width/2, self.y > -node.size.height/2, self.y < node.size.height/2 { return true }
+        return false
+    }
+}
+
 // MARK: ResetButtonNodeDelegate
 
-public protocol ResetButtonNodeDelegate: class {
-    func didTapReset(sender: ResetButtonNode)
+public protocol SortButtonNodeDelegate: class {
+    func didTapSort(sender: SortButtonNode)
 }

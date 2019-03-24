@@ -10,9 +10,9 @@ public class ResetButtonNode: SKSpriteNode {
     // MARK: Lifecycle
     
     public init() {
-        let texture = SKTexture(imageNamed: "restart")
+        let texture = SKTexture(imageNamed: "reset-button")
         let color = SKColor.red
-        let size = CGSize(width: 40, height: 40)
+        let size = CGSize(width: 135, height: 50)
         super.init(texture: texture, color: color, size: size)
         
         isUserInteractionEnabled = true

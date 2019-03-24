@@ -32,6 +32,11 @@ struct Block : Comparable, Hashable {
 
 
 class GameScene: SKScene {
+    enum ActionType { case Animation, Comparison, Adjust }
+    enum SortType{ case QuickSort, BubbleSort }
+    
+    let animationDuration = 0.5
+    let comparisonDuration = 0.05
     
     private var blockSize : CGSize!
     private var blocks : [Block] = []
@@ -62,9 +67,6 @@ class GameScene: SKScene {
             y: size.height/2 - comparistionsLabel.frame.height/2 - 40)
         addChild(comparistionsLabel)
         resetComparisions()
-        
-        
-        
         
         let buttonSort = SortButtonNode()
         buttonSort.name = "sort"
@@ -140,29 +142,6 @@ class GameScene: SKScene {
         }
     }
     
-
-    func resetComparisions(){
-        comparistions = 0
-        let label = childNode(withName: "comparistions") as! SKLabelNode
-        label.text = "COMPARISIONS: \(comparistions)"
-    }
-    func incComparisions(){
-        comparistions = comparistions + 1
-        let label = childNode(withName: "comparistions") as! SKLabelNode
-        label.run(SKAction.sequence([
-            .scale(by: 1.2, duration: 0.1),
-            .run{ label.text = "COMPARISIONS: \(self.comparistions)"},
-            .playSoundFileNamed("combo.wav", waitForCompletion: false),
-            .scale(by: CGFloat(1.0 / 1.2), duration: 0.1),
-            ]))
-    }
-    
-    func reset(_ block : () -> Void){
-        self.resetComparisions()
-        self.blockActions = false
-        block()
-    }
-    
     func sort(){
         if(blocks.count <= 1) {return}
         blockActions = true
@@ -195,9 +174,10 @@ class GameScene: SKScene {
         for (type, block, action) in actions{
             block?.node.run(SKAction.sequence([.wait(forDuration: duration), action]))
             
-            // Execute both actions at once
             if type == ActionType.Comparison {
                 duration += comparisonDuration
+                continue
+            }else if type == ActionType.Adjust {
                 continue
             }else if replacedBothOfPair{
                 duration += animationDuration
@@ -208,13 +188,6 @@ class GameScene: SKScene {
         
     }
 
-    
-    let animationDuration = 0.5
-    let comparisonDuration = 0.05
-    
-    enum ActionType { case Animation,Comparison }
-    enum SortType{ case QuickSort, BubbleSort }
-    
     public func random(min: Int, max: Int) -> Int {
         assert(min < max)
         return min + Int(arc4random_uniform(UInt32(max - min + 1)))
@@ -324,12 +297,8 @@ class GameScene: SKScene {
         
         if secondIndex == firstIndex { return }
         
-        print("first: \(firstIndex) second \(secondIndex)")
-        
         let leftIndex = secondIndex > firstIndex ? secondIndex : firstIndex
         let rightIndex = secondIndex > firstIndex ? firstIndex :secondIndex
-        
-        print("leftIndex: \(leftIndex) rightIndex \(rightIndex)")
         
         let leftBlockMin = positions[blocks[leftIndex]]! - blocks[leftIndex].width/2
         let leftBlockMax = positions[blocks[leftIndex]]! + blocks[leftIndex].width/2
@@ -343,15 +312,12 @@ class GameScene: SKScene {
         positions[blocks[rightIndex]] = leftBlockMin + blocks[rightIndex].width/2
         
         let moveBlockBetween = blocks[rightIndex].width - blocks[leftIndex].width
-        print("moveBlockBetween \(moveBlockBetween)")
         
         let blocksBetween = blocks[min(leftIndex,rightIndex)+1..<max(rightIndex, leftIndex)]
         
-
-        print("blocksBetween: \(blocksBetween.count)")
         for block in blocksBetween {
             positions[block] = positions[block]! + moveBlockBetween
-            actions.append((ActionType.Animation, block,
+            actions.append((ActionType.Adjust, block,
                 SKAction.moveTo(x: positions[block]!, duration: comparisonDuration)))
         }
 
@@ -374,14 +340,7 @@ class GameScene: SKScene {
         endNewBlockCreation(atPoint : event.location(in: self))
     }
     
-    override func update(_ currentTime: TimeInterval) {
-        // Called before each frame is rendered
-    }
-    
-    
-    
     func startNewBlockCreation(atPoint pos : CGPoint) {
-        
         if blockActions {
             print("Can not add new block right now")
             return
@@ -420,10 +379,7 @@ class GameScene: SKScene {
         creatingBlock.node.run(SKAction.sequence([
             .moveTo(y: creatingBlock.node.frame.height/2, duration: 0.5),
             SKAction.playSoundFileNamed("landing2.wav", waitForCompletion: false),
-            .run {
-                //self.sort()
-                self.blockActions = false
-            }
+            .run{ self.blockActions = false }
             ]))
         self.creatingBlock = nil
     }
@@ -500,6 +456,28 @@ class GameScene: SKScene {
             btnBubbleSort.select(false)
             btnQuickSort.select(true)
         }
+    }
+    
+    func resetComparisions(){
+        comparistions = 0
+        let label = childNode(withName: "comparistions") as! SKLabelNode
+        label.text = "COMPARISIONS: \(comparistions)"
+    }
+    func incComparisions(){
+        comparistions = comparistions + 1
+        let label = childNode(withName: "comparistions") as! SKLabelNode
+        label.run(SKAction.sequence([
+            .scale(by: 1.2, duration: 0.1),
+            .run{ label.text = "COMPARISIONS: \(self.comparistions)"},
+            .playSoundFileNamed("combo.wav", waitForCompletion: false),
+            .scale(by: CGFloat(1.0 / 1.2), duration: 0.1),
+            ]))
+    }
+    
+    func reset(_ block : () -> Void){
+        self.resetComparisions()
+        self.blockActions = false
+        block()
     }
 }
 // MARK: ResetButtonNodeDelegate
